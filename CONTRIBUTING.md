@@ -280,7 +280,10 @@ pytest tests/test_correlation.py
 
 **When using AI assistance (Claude, etc.):**
 
-1. Review [CLAUDE.md](CLAUDE.md) for project context and guidelines
+1. Review [CLAUDE.md](CLAUDE.md) for project context before starting
+2. Log every AI session in the Session Log table in [CLAUDE.md](CLAUDE.md) (date, LLM name/version, summary of work done)
+3. Include `Co-Authored-By: Claude <noreply@anthropic.com>` in git commit messages for AI-assisted changes
+4. Review all AI-generated output before committing — treat AI suggestions as drafts requiring human approval
 
 ### Writing Style
 

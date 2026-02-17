@@ -100,3 +100,25 @@ The **Wallops Island ionosonde** (professional Digisonde) is used as the referen
 - Use **pytest** for Python unit tests
 - Test data processing functions with known inputs/outputs
 - Validate against reference data (e.g., Wallops Island ionosonde) where available
+
+## AI Usage Tracking
+
+This project uses AI assistants (primarily Anthropic Claude via Claude Code) for code development, documentation, and project planning. All AI usage must be tracked in the session log below.
+
+### Guidelines
+
+- **Log every session** where an AI assistant contributes to the project (code, docs, plans, issues, etc.)
+- **Include Co-Authored-By** in git commit messages when AI contributed to the committed changes:
+
+  ```text
+  Co-Authored-By: Claude <noreply@anthropic.com>
+  ```
+
+- **Review all AI-generated output** before committing. AI suggestions should be treated as drafts that require human review and approval.
+- AI assistants should consult this file for project context before making changes.
+
+### Session Log
+
+| Date | LLM | Summary |
+| --- | --- | --- |
+| 2026-02-17 | Claude Opus 4.6 (claude-opus-4-6) via Claude Code | Initial project setup: created README.md, CLAUDE.md, CONTRIBUTING.md; configured .gitignore; created Track 1 and Track 2 plans; created 16 GitHub issues with milestones, dates, and assignments on project board |

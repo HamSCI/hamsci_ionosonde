@@ -70,6 +70,8 @@ This work is supported by NSF Grants AGS-2230345, AGS-2045755, AGS-2002278, NASA
 
 Digisonde data is provided by the [Lowell GIRO Data Center (LGDC)](https://giro.uml.edu/).
 
+This code and repository is being developed with the assistance of [Claude](https://claude.ai), an AI assistant by Anthropic, via [Claude Code](https://claude.ai/claude-code). AI usage is tracked in [CLAUDE.md](CLAUDE.md).
+
 ## License
 
 This project is licensed under the GNU General Public License v3.0 -- see [LICENSE](LICENSE) for details.
