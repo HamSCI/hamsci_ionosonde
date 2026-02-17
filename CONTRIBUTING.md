@@ -1,6 +1,6 @@
-# Contributing to HamSCI Contesting Dashboard
+# Contributing to HamSCI Ionosonde
 
-Thank you for your interest in contributing to the HamSCI Contesting and DXing Dashboard project! This document provides guidelines for contributing code, reporting issues, and collaborating on this open-source project.
+Thank you for your interest in contributing to the HamSCI Ionosonde project! This document provides guidelines for contributing code, reporting issues, and collaborating on this open-source project.
 
 ---
 
@@ -21,7 +21,7 @@ Thank you for your interest in contributing to the HamSCI Contesting and DXing D
 
 ### Our Pledge
 
-This project follows amateur radio traditions of courtesy, cooperation, and mutual assistance. We welcome contributions from operators of all experience levels.
+This project follows amateur radio traditions of courtesy, cooperation, and mutual assistance. We welcome contributions from operators and scientists of all experience levels.
 
 ### Expected Behavior
 
@@ -39,17 +39,16 @@ This project follows amateur radio traditions of courtesy, cooperation, and mutu
 
 Before contributing, ensure you have:
 - Python 3.8+ installed
-- MongoDB access (for testing database queries)
-- Modern web browser with developer tools
-- Basic understanding of Flask and JavaScript
-- Familiarity with amateur radio concepts (bands, modes, propagation)
+- Familiarity with NumPy, SciPy, and Matplotlib
+- Basic understanding of signal processing concepts (cross-correlation, FFT)
+- Familiarity with ionospheric science concepts (see [CLAUDE.md](CLAUDE.md) for key terms)
 
 ### Setting Up Development Environment
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/hamsci/contesting-dashboard.git
-   cd contesting-dashboard
+   git clone git@github.com:HamSCI/hamsci_ionosonde.git
+   cd hamsci_ionosonde
    ```
 
 2. **Create virtual environment:**
@@ -60,24 +59,13 @@ Before contributing, ensure you have:
 
 3. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements.txt  # when available
    ```
 
-4. **Configure local database:**
-   - Copy `.env.example` to `.env` and configure your MongoDB credentials
-   - Or use SSH tunnel to access remote database:
-     ```bash
-     ssh -L 27017:remote_host:27017 user@server
-     # Then set MONGODB_HOST=localhost in .env
-     ```
-
-5. **Run development server:**
+4. **Run tests:**
    ```bash
-   python web-ft.py
+   pytest
    ```
-
-6. **Open browser:**
-   Navigate to http://localhost:5000
 
 ---
 
@@ -102,8 +90,8 @@ Supporting branches have a limited lifetime and are removed after merging.
 
 | Branch      | Branches from | Merges back to       | Naming      | Purpose                                                  |
 |-------------|---------------|----------------------|-------------|----------------------------------------------------------|
-| **Feature** | `develop`     | `develop`            | `feature/*` | New features (e.g., `feature/add-rbm-integration`)       |
-| **Bugfix**  | `develop`     | `develop`            | `bugfix/*`  | Non-urgent bug fixes (e.g., `bugfix/fix-grid-parsing`)   |
+| **Feature** | `develop`     | `develop`            | `feature/*` | New features (e.g., `feature/add-chirp-generator`)       |
+| **Bugfix**  | `develop`     | `develop`            | `bugfix/*`  | Non-urgent bug fixes (e.g., `bugfix/fix-correlation`)    |
 | **Release** | `develop`     | `main` and `develop` | `release/*` | Prepare a release: version bumps, last-minute fixes      |
 | **Hotfix**  | `main`        | `main` and `develop` | `hotfix/*`  | Urgent production fixes that can't wait for next release |
 
@@ -159,25 +147,26 @@ Supporting branches have a limited lifetime and are removed after merging.
 
 ## Code Style Guidelines
 
-### Python (Backend)
+### Python
 
 **Follow PEP 8 with these specifics:**
 
 #### Naming Conventions
 ```python
 # Functions: lowercase with underscores
-def fetch_wspr_spots(lastInterval=15):
+def compute_virtual_height(time_delay):
     pass
 
 # Variables: lowercase with underscores
-spot_count = 0
-rx_callsign = "KD3ALD"
+sample_rate = 0
+chirp_duration = 1.0
 
 # Constants: UPPERCASE with underscores
-CONTEST_BANDS = ["160m", "80m", "40m", "20m", "15m", "10m"]
+SPEED_OF_LIGHT = 299792458  # m/s
+FREQ_RANGE = (2e6, 10e6)    # Hz
 
-# Classes: PascalCase (if needed)
-class SpotAggregator:
+# Classes: PascalCase
+class IonogramProcessor:
     pass
 ```
 
@@ -185,238 +174,87 @@ class SpotAggregator:
 Use Google-style docstrings:
 
 ```python
-def frequency_to_band(freq):
+def cross_correlate_chirp(tx_signal, rx_signal, sample_rate):
     """
-    Convert frequency in MHz to amateur radio band designation.
+    Cross-correlate transmitted chirp with received signal to find echo delay.
 
-    Maps frequencies to standard amateur radio band names based on
-    FCC frequency allocations.
+    Computes the normalized cross-correlation between the transmitted chirp
+    and the received signal, then identifies peaks corresponding to the
+    direct path and ionospheric echo.
 
     Args:
-        freq (float): Frequency in MHz (e.g., 14.097 for 20 meters)
+        tx_signal (np.ndarray): Transmitted chirp waveform.
+        rx_signal (np.ndarray): Received signal containing direct path and echo.
+        sample_rate (float): Sample rate in Hz.
 
     Returns:
-        str: Band designation (e.g., "20m") or "Unknown" if not in amateur band
+        float: Time delay in seconds between direct path and echo.
 
     Example:
-        >>> frequency_to_band(14.097)
-        '20m'
+        >>> delay = cross_correlate_chirp(chirp, recording, 250e3)
+        >>> height = delay * SPEED_OF_LIGHT / 2
     """
-    if 14.0 <= freq < 14.35:
-        return "20m"
-    return "Unknown"
 ```
 
 #### Comments
 ```python
 # Good: Explain WHY, not WHAT
-# Convert threshold to database format (stores as separate date/time strings)
-threshold_date = f"{threshold.year % 100:02d}{threshold.month:02d}{threshold.day:02d}"
+# Use Hamming window to reduce spectral leakage from finite chirp duration
+windowed_signal = signal * np.hamming(len(signal))
 
 # Bad: States the obvious
-# Set threshold_date variable
-threshold_date = f"{threshold.year % 100:02d}{threshold.month:02d}{threshold.day:02d}"
+# Multiply signal by Hamming window
+windowed_signal = signal * np.hamming(len(signal))
 ```
 
 #### Imports
 ```python
 # Standard library imports first
 from datetime import datetime, timedelta
-import json
+import os
 
 # Third-party imports second
-from flask import Flask, jsonify
-from pymongo import MongoClient
+import numpy as np
+from scipy import signal
+import matplotlib.pyplot as plt
 
 # Local imports last
-from utils import helper_function
-```
-
----
-
-### JavaScript (Frontend)
-
-**Follow Airbnb JavaScript Style Guide with modifications:**
-
-#### Naming Conventions
-```javascript
-// Functions: camelCase
-function loadSpots() {
-    // ...
-}
-
-// Variables: camelCase
-let spotCount = 0;
-const rxCallsign = "KD3ALD";
-
-// Constants: SCREAMING_SNAKE_CASE
-const CONTEST_BANDS = ["160m", "80m", "40m", "20m", "15m", "10m"];
-
-// Private functions: _prefixed (convention)
-function _parseInternalFormat(data) {
-    // ...
-}
-```
-
-#### JSDoc Comments
-```javascript
-/**
- * Lookup country name from geographic coordinates.
- *
- * Uses Turf.js point-in-polygon test against country boundary polygons
- * to determine which country contains the given coordinates.
- *
- * @param {number} lat - Latitude in decimal degrees
- * @param {number} lon - Longitude in decimal degrees
- * @returns {string} Country name or "Unknown" if not found
- *
- * @example
- * lookupCountry(40.7128, -74.0060) // "United States of America"
- */
-function lookupCountry(lat, lon) {
-    const pt = turf.point([lon, lat]);
-    for (const feature of countryFeat) {
-        if (turf.booleanPointInPolygon(pt, feature)) {
-            return feature.properties.name || "Unknown";
-        }
-    }
-    return "Unknown";
-}
-```
-
-#### Async/Await (Preferred over Promises)
-```javascript
-// Good: async/await
-async function loadSpots() {
-    try {
-        const res = await fetch('/spots?lastInterval=15');
-        const spots = await res.json();
-        renderSpots(spots);
-    } catch (err) {
-        console.error('Failed to load spots:', err);
-    }
-}
-
-// Avoid: Promise chains
-function loadSpots() {
-    fetch('/spots?lastInterval=15')
-        .then(res => res.json())
-        .then(spots => renderSpots(spots))
-        .catch(err => console.error(err));
-}
-```
-
-#### Error Handling
-```javascript
-// Always use try-catch for async operations
-async function loadCountryPolygons() {
-    try {
-        const res = await fetch("js/countries.geojson");
-        const data = await res.json();
-        countryFeat = data.features;
-        console.log("Loaded", countryFeat.length, "country polygons");
-    } catch (err) {
-        console.error("Failed to load countries.geojson", err);
-        // Optionally: show user-friendly error message
-        alert("Failed to load country data. Map filtering may not work.");
-    }
-}
-```
-
----
-
-### HTML/CSS
-
-#### HTML Style
-```html
-<!-- Use semantic HTML5 -->
-<section id="spot-info" class="info-panel">
-    <h3>Spot Information</h3>
-    <p>Found 45 spots from Europe</p>
-</section>
-
-<!-- Use descriptive IDs and classes -->
-<button id="updateButton" class="btn btn-primary">Update</button>
-
-<!-- Keep inline styles to minimum -->
-<!-- Prefer CSS classes over inline style="" -->
-```
-
-#### CSS Style
-```css
-/* Use courier monospace font (project standard) */
-body {
-    font-family: 'Courier New', Courier, monospace;
-}
-
-/* Group related rules */
-.spot-counter {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    background: white;
-    padding: 10px;
-    border-radius: 5px;
-}
-
-/* Use comments to explain non-obvious styling */
-/* Green highlight for active bands (threshold met) */
-td.value {
-    background-color: green;
-    color: white;
-}
+from processing import chirp_correlator
 ```
 
 ---
 
 ## Testing Guidelines
 
-### Manual Testing Checklist
+### Automated Testing
 
-Before submitting PR, test the following:
+We use **pytest** for automated testing.
 
-#### Backend Tests
-- [ ] Server starts without errors (`python web-ft.py`)
-- [ ] `/spots` endpoint returns JSON
-- [ ] `/tbspots` endpoint returns JSON with CQ zones
-- [ ] Time filtering works (`lastInterval` parameter)
-- [ ] Invalid grid squares handled gracefully
+#### Data Processing Tests
 
-#### Frontend Tests
-- [ ] Map loads and displays tiles
-- [ ] Spots appear on map with correct colors
-- [ ] Band filter works (all bands, individual, contest mode)
-- [ ] Country filter works (including "Non-US")
-- [ ] Continent filter works
-- [ ] CQ zone filter works
-- [ ] Mode filter works (WSPR/FT8/FT4)
-- [ ] Marker popups show correct information
-- [ ] Spot counter updates correctly
-- [ ] Session storage persists filters
-- [ ] Auto-reload works
-- [ ] Table view displays correct counts
-- [ ] Table highlights active bands
+- [ ] Chirp generation produces expected waveform
+- [ ] Cross-correlation correctly identifies known time delays
+- [ ] Virtual height calculation is accurate for known inputs
+- [ ] Data loading handles expected file formats
+- [ ] Edge cases handled (e.g., no echo detected, clipped signals)
 
-#### Cross-Browser Testing
-Test in at least 2 browsers:
-- [ ] Chrome/Chromium
-- [ ] Firefox
-- [ ] Safari (if on Mac)
-- [ ] Edge
+#### Validation Tests
 
-#### Mobile Testing (if applicable)
-- [ ] Map is responsive on mobile
-- [ ] Filters are usable on small screens
+- [ ] Results are consistent with reference data (e.g., Wallops Island ionosonde)
+- [ ] Output formats match expected specifications
 
-### Automated Testing (Future)
+### Running Tests
 
-We plan to add:
-- Python unit tests (pytest)
-- JavaScript unit tests (Jest)
-- Integration tests (Selenium)
-- API endpoint tests
+```bash
+# Run all tests
+pytest
 
-If you'd like to help set up testing infrastructure, please reach out!
+# Run with verbose output
+pytest -v
+
+# Run specific test file
+pytest tests/test_correlation.py
+```
 
 ---
 
@@ -425,39 +263,32 @@ If you'd like to help set up testing infrastructure, please reach out!
 ### Code Documentation Requirements
 
 **Every new function must have:**
-1. Docstring/JSDoc explaining purpose
+
+1. Google-style docstring explaining purpose
 2. Parameter descriptions with types
 3. Return value description
 4. Example usage (if not obvious)
 
 **Complex algorithms must have:**
+
 1. Inline comments explaining logic
-2. References to sources (if using published algorithms)
+2. References to sources (if using published algorithms or formulas)
 
 **New features must include:**
-1. Update to README.md (technical documentation)
-2. Update to OPERATOR_GUIDE.md (if user-facing)
-3. Screenshots (if UI changes)
+
+1. Update to README.md if applicable
 
 **When using AI assistance (Claude, etc.):**
-1. Review [docs/CLAUDE.md](docs/CLAUDE.md) for project context and guidelines
-2. Update docs/CLAUDE.md session history if making significant contributions
-3. Follow the offline-first constraints (no CDN dependencies)
-4. Reference requirement IDs when implementing features
+
+1. Review [CLAUDE.md](CLAUDE.md) for project context and guidelines
 
 ### Writing Style
 
-**For technical documentation:**
 - Be concise but complete
 - Use active voice ("The function returns..." not "The value is returned...")
 - Include code examples
 - Link to relevant external resources
-
-**For operator documentation:**
-- Use plain language
-- Define amateur radio terms
-- Include visual examples (screenshots, tables)
-- Provide troubleshooting steps
+- Define domain-specific terms (ionospheric science, signal processing) on first use
 
 ---
 
@@ -483,13 +314,10 @@ Brief description of changes (1-2 sentences)
 - Be specific
 
 ## Testing Done
-- [ ] Tested locally with development server
-- [ ] Tested with production-like data
-- [ ] Tested in multiple browsers
+- [ ] Tested locally with sample data
+- [ ] All existing tests pass
+- [ ] Added new tests for new functionality
 - [ ] Updated documentation
-
-## Screenshots (if applicable)
-[Attach screenshots showing UI changes]
 
 ## Related Issues
 Closes #123
@@ -519,28 +347,29 @@ Use conventional commits format:
 
 **Examples:**
 ```
-feat(map): add ITU zone filtering support
+feat(processing): add chirp cross-correlation function
 
-Add dropdown filter for ITU zones (1-90) with client-side filtering.
-Loads ituzones.geojson and uses Turf.js for point-in-polygon lookup.
+Implement normalized cross-correlation between transmitted chirp and
+received signal. Identifies direct path and echo peaks to compute
+time delay.
 
-Closes #42
+Closes #12
 ```
 
 ```
-fix(backend): handle invalid maidenhead grid squares
+fix(correlation): handle case where no echo is detected
 
-Wrap maidenhead.to_location() in try-catch to prevent server crashes
-when database contains malformed grid squares. Defaults to (0, 0).
+Return None instead of raising an exception when cross-correlation
+finds no peak above the noise floor threshold.
 
-Fixes #67
+Fixes #25
 ```
 
 ```
-docs: update operator guide with contest strategy tips
+docs: add signal processing overview to README
 
-Add section on using dashboard during contests, including example
-scenarios and band selection strategies.
+Add section explaining the chirp generation, transmission, and
+cross-correlation pipeline.
 ```
 
 ---
@@ -556,8 +385,8 @@ scenarios and band selection strategies.
 Clear description of the bug
 
 ## Steps to Reproduce
-1. Go to '...'
-2. Click on '...'
+1. Run '...'
+2. With input data '...'
 3. See error
 
 ## Expected Behavior
@@ -566,17 +395,16 @@ What you expected to happen
 ## Actual Behavior
 What actually happened
 
-## Screenshots
-If applicable, add screenshots
-
 ## Environment
-- Browser: [e.g., Chrome 120]
-- OS: [e.g., Windows 11]
-- Dashboard URL: [e.g., http://dash.kd3ald.com]
-- Time of occurrence: [e.g., 2026-01-07 14:30 UTC]
+- Python version: [e.g., 3.11]
+- OS: [e.g., Ubuntu 22.04]
+- NumPy/SciPy version: [e.g., 1.26/1.12]
+
+## Sample Data
+If applicable, attach or describe the input data that triggers the bug
 
 ## Additional Context
-Any other relevant information
+Any other relevant information (error traceback, plots, etc.)
 ```
 
 ### Feature Requests
@@ -591,7 +419,7 @@ Clear description of the feature
 Explain why this feature would be useful:
 - Who would use it?
 - What problem does it solve?
-- How does it improve contesting/DXing operations?
+- How does it improve ionosonde data processing or analysis?
 
 ## Proposed Solution
 Describe how you envision this working
@@ -600,12 +428,10 @@ Describe how you envision this working
 Other approaches you've thought about
 
 ## Additional Context
-Amateur radio context, contest examples, etc.
+References to papers, algorithms, or similar implementations
 ```
 
 ### Questions
-
-For questions about using the dashboard, see [OPERATOR_GUIDE.md](OPERATOR_GUIDE.md) first.
 
 For technical questions, feel free to open a discussion or contact the maintainers directly.
 
@@ -615,12 +441,11 @@ For technical questions, feel free to open a discussion or contact the maintaine
 
 ### What Reviewers Look For
 
-1. **Functionality:** Does it work as intended?
+1. **Correctness:** Does it produce scientifically valid results?
 2. **Code Quality:** Follows style guidelines?
 3. **Documentation:** Well-commented and documented?
-4. **Testing:** Adequately tested?
-5. **Performance:** No obvious performance issues?
-6. **Security:** No security vulnerabilities introduced?
+4. **Testing:** Adequately tested with known inputs/outputs?
+5. **Performance:** Efficient for large datasets?
 
 ### Review Timeline
 
@@ -636,23 +461,20 @@ For technical questions, feel free to open a discussion or contact the maintaine
 
 ### High Priority
 
-1. **Stability:** Don't break existing functionality
-2. **Performance:** Dashboard must be responsive with 1000+ spots
-3. **Accuracy:** Propagation data must be accurate and timely
-4. **Usability:** Operators should be able to use dashboard during contests
+1. **Correctness:** Data processing must produce scientifically valid results
+2. **Reproducibility:** Results must be reproducible from raw data
+3. **Validation:** Outputs should be validated against reference ionosonde data
 
 ### Medium Priority
 
-1. **New filters:** Additional filtering options
-2. **Data sources:** Integration with other PSWS nodes
-3. **Export features:** Save spot data for analysis
-4. **Mobile optimization:** Better mobile UI
+1. **Multi-frequency support:** Process echoes across multiple bands for true height calculation
+2. **Visualization:** Clear, publication-quality plots of ionograms and layer heights
+3. **Data formats:** Support for standard ionosonde data formats
 
 ### Low Priority
 
-1. **UI polish:** Visual improvements
-2. **Advanced analytics:** Historical data analysis
-3. **Notifications:** Band opening alerts
+1. **Real-time processing:** Live processing during data collection
+2. **Automation:** Automated data collection and processing pipelines
 
 ---
 
@@ -660,31 +482,27 @@ For technical questions, feel free to open a discussion or contact the maintaine
 
 ### Project Documentation
 
-- [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) - Formal requirements specification
-- [docs/CLAUDE.md](docs/CLAUDE.md) - AI assistance history and guidelines
-- [README.md](README.md) - Complete technical documentation
-- [OPERATOR_GUIDE.md](OPERATOR_GUIDE.md) - User guide for operators
+- [README.md](README.md) - Project overview and setup
+- [CLAUDE.md](CLAUDE.md) - AI assistant context and guidelines
+- [docs/](docs/) - Reference materials including the HamSCI 2025 poster
 
-### Amateur Radio Resources
+### Scientific Resources
 
-- [ARRL Band Plans](http://www.arrl.org/band-plan) - Frequency allocations
 - [HamSCI Project](https://hamsci.org/) - Parent project
-- [WSPRNet](https://wsprnet.org/) - WSPR network
-- [PSK Reporter](https://pskreporter.info/) - Digital mode propagation
+- [Lowell GIRO Data Center](https://giro.uml.edu/) - Digisonde data for validation
+- Lloyd, W. C. (2019). *Ionospheric Sounding During a Total Solar Eclipse.* Master's Thesis, Virginia Tech.
 
 ### Technical Resources
 
-- [Flask Documentation](https://flask.palletsprojects.com/)
-- [Leaflet Documentation](https://leafletjs.com/reference.html)
-- [Turf.js Documentation](https://turfjs.org/)
-- [MongoDB Query Reference](https://docs.mongodb.com/manual/reference/operator/query/)
+- [NumPy Documentation](https://numpy.org/doc/)
+- [SciPy Signal Processing](https://docs.scipy.org/doc/scipy/reference/signal.html)
+- [Matplotlib Documentation](https://matplotlib.org/stable/contents.html)
+- [GNU Radio Documentation](https://wiki.gnuradio.org/)
 
 ### Development Tools
 
-- [Postman](https://www.postman.com/) - API testing
-- [MongoDB Compass](https://www.mongodb.com/products/compass) - Database GUI
 - [Visual Studio Code](https://code.visualstudio.com/) - Code editor
-- [Chrome DevTools](https://developer.chrome.com/docs/devtools/) - Browser debugging
+- [pytest Documentation](https://docs.pytest.org/) - Testing framework
 
 ---
 
@@ -700,26 +518,23 @@ Contributors will be recognized in:
 
 ## License
 
-By contributing to this project, you agree that your contributions will be licensed under the same license as the project (to be determined - likely MIT or GPL).
+By contributing to this project, you agree that your contributions will be licensed under the GNU General Public License v3.0, the same license as the project.
 
 ---
 
 ## Questions?
 
 **Project Lead:**
-Owen Ruzanski, KD3ALD
-Email: owen.ruzanski@scranton.edu
+Gerard Piccini
+Email: <gerard.piccini@scranton.edu>
 
 **Faculty Advisor:**
 Dr. Nathaniel Frissell, W2NAF
-Email: nathaniel.frissell@scranton.edu
+Email: <nathaniel.frissell@scranton.edu>
 
-**Frankford Radio Club Mentors:**
-Ray Sokola, K9RS
-Bud Trench, AA3B
+**Institutions:**
+University of Scranton / MIT Haystack Observatory
 
 ---
 
 **Thank you for contributing to HamSCI and advancing amateur radio science!**
-
-*73 de KD3ALD*
