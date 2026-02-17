@@ -121,4 +121,4 @@ This project uses AI assistants (primarily Anthropic Claude via Claude Code) for
 
 | Date | LLM | Summary |
 | --- | --- | --- |
-| 2026-02-17 | Claude Opus 4.6 (claude-opus-4-6) via Claude Code | Initial project setup: created README.md, CLAUDE.md, CONTRIBUTING.md; configured .gitignore; created Track 1 and Track 2 plans; created 16 GitHub issues with milestones, dates, and assignments on project board |
+| 2026-02-17 | Claude Opus 4.6 (claude-opus-4-6) via Claude Code | Initial project setup: created README.md, CLAUDE.md, CONTRIBUTING.md; configured .gitignore (.DS_Store); created plans/track1-validation.md, plans/track2-sounding-mode-design.md, plans/track1-workplan.md; created 16 GitHub issues (#1-#16) with 3 milestones (HamSCI Workshop, Hamvention, CEDAR), 5 labels, dates, and assignments on project board; added AI usage tracking guidelines to CLAUDE.md, CONTRIBUTING.md, and README.md |
