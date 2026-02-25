@@ -20,13 +20,13 @@ def get_giro_data(fromDate=defaultFromDate,toDate=defaulttoDate,stationList=['AL
                 comment='#',
                 delim_whitespace=True,
                 parse_dates=[0],
-                names = ['time', 'cs', 'fof2', 'qd1', 'hmF2', 'qd2', 'foE', 'qd3', 'MUFD', 'qd4', 'hF2', 'qd5'])\
-            .assign(station_id=station)
+                names = ['time', 'cs', 'fof2', 'qd1', 'MUFD', 'qd2', 'foE', 'qd3', 'hmF2', 'qd4', 'hF2', 'qd5'])\
+                .assign(station_id=station)
         df_list.append(df)
 
     giro_data=pd.concat(df_list)
 
-    giro_data = giro_data[['station_id', 'time', 'cs', 'fof2', 'hmF2', 'foE', 'MUFD', 'hF2']]
+    giro_data = giro_data[['station_id', 'time', 'cs', 'fof2', 'MUFD', 'foE', 'hmF2', 'hF2']]
 
     giro_data.cs = giro_data.cs.astype(str)
     giro_data = giro_data[giro_data.cs.str.contains("No") == False]
@@ -56,8 +56,4 @@ def update_giro_data_csv(giro_data_path,stationList=['AL945','MHJ45']):
     giro_data.to_csv(giro_data_path,index=False)
 
 if __name__ == '__main__':
-    print(defaultFromDate)
-    testtime = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')
-    print(type(testtime))
-
-    update_giro_data_csv(giro_data_path='Station Data.csv',stationList=['AL945','MHJ45'])
+    update_giro_data_csv(giro_data_path='GIRO Station Data.csv',stationList=['AL945','MHJ45'])
