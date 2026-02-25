@@ -39,21 +39,38 @@ def get_giro_data(fromDate=defaultFromDate,toDate=defaulttoDate,stationList=['AL
 
     return giro_data
 
-def update_giro_data_csv(giro_data_path,stationList=['AL945','MHJ45']):
-    if os.path.isfile(giro_data_path):
-        old_data = pd.read_csv(giro_data_path)
+def save_giro_data(giro_data,giro_data_directory):
+    startdate = giro_data['time'].iloc[0].date()
+    enddate   = giro_data['time'].iloc[-1].date()
+
+    day = startdate
+    while day<=enddate:
+        new_data = giro_data[giro_data['time'].dt.date==day]
+        file_path = giro_data_directory+str(day)+'.csv'
+        if os.path.isfile(file_path):
+            old_data = pd.read_csv(file_path)
+            old_data['time'] = pd.to_datetime(old_data['time'],format='ISO8601')
+
+            new_data = pd.concat([old_data,new_data])
+            new_data = new_data.sort_values(by=['time'],ascending=True)
+            new_data = new_data.reset_index(drop=True)
+            new_data = new_data.drop_duplicates()
+
+        new_data.to_csv(file_path,index=False)
+        day=day+dt.timedelta(days=1)
+
+
+def update_giro_data_csv(giro_data_directory,stationList=['AL945','MHJ45']):
+    if len(os.listdir(giro_data_directory))!=0:
+        old_data = pd.read_csv(giro_data_directory+os.listdir(giro_data_directory)[-1])
         old_data['time'] = pd.to_datetime(old_data['time'],format='ISO8601')
-        fromDate = (old_data['time'].iloc[-1]+ dt.timedelta(minutes=1)).strftime('%Y-%m-%dT%H:%M:%S')
+        fromDate = (old_data['time'].iloc[-1]).strftime('%Y-%m-%dT%H:%M:%S')
     else:
         fromDate = (dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=int(7))).strftime('%Y-%m-%dT%H:%M:%S')
     toDate = (dt.datetime.now(dt.timezone.utc).date() + dt.timedelta(days=int(1))).strftime('%Y-%m-%dT%H:%M:%S')
 
     giro_data = get_giro_data(fromDate,toDate,stationList)
-
-    if os.path.isfile(giro_data_path):
-        giro_data = pd.concat([old_data,giro_data])
-
-    giro_data.to_csv(giro_data_path,index=False)
+    save_giro_data(giro_data,giro_data_directory)
 
 if __name__ == '__main__':
-    update_giro_data_csv(giro_data_path='GIRO Station Data.csv',stationList=['AL945','MHJ45'])
+    update_giro_data_csv(giro_data_directory='GIRO_data/',stationList=['AL945','MHJ45'])
