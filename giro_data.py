@@ -52,9 +52,9 @@ def save_giro_data(giro_data,giro_data_directory):
             old_data['time'] = pd.to_datetime(old_data['time'],format='ISO8601')
 
             new_data = pd.concat([old_data,new_data])
-            new_data = new_data.sort_values(by=['time'],ascending=True)
-            new_data = new_data.reset_index(drop=True)
-            new_data = new_data.drop_duplicates()
+        new_data = new_data.sort_values(by=['time'],ascending=True)
+        new_data = new_data.reset_index(drop=True)
+        new_data = new_data.drop_duplicates()
 
         new_data.to_csv(file_path,index=False)
         day=day+dt.timedelta(days=1)

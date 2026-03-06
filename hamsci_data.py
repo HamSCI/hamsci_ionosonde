@@ -61,27 +61,27 @@ def calculate_delay(x,y,sample_rate): # determines delay by finding the differen
 def calculate_virtual_layer_heights(raw_data_directory,start_date,end_date): 
     '''
     :param directory: Parent directory of raw data files
-    :param start_date: first date to process. enter date as '%Y-%m-%d'
-    :param end_date: last date to process. enter date as '%Y-%m-%d'
+    :param start_date: first date to process. enter date as datetime obj
+    :param end_date: last date to process. enter date as datetime obj
     '''
 
-    start_date = dt.datetime.strptime(start_date,'%Y-%m-%d') # converting to datetime to get each day's directory
-    end_date = dt.datetime.strptime(end_date,'%Y-%m-%d')
     delta = end_date-start_date
     date_directories = []
     for i in range(delta.days+1):
         day = raw_data_directory+dt.datetime.strftime(start_date+dt.timedelta(days=i),'%Y/%m/%d/')
-        date_directories.append(day)
+        if os.path.isdir(day):
+            date_directories.append(day)
 
     fnames = []
     fpaths = []
     for directory in date_directories: # create a list of all files with date range and their file paths
         for file_name in os.listdir(directory):
             file_path = directory+file_name
-            if file_name!='no_name' and os.path.getsize(file_path)!=0: # avoid processing files that are empty or are the transmitted chirp
+            date = dt.datetime.strptime(file_name[0:19],'%Y_%m_%d_%H_%M_%S').replace(tzinfo=dt.timezone.utc)#
+            if file_name!='no_name' and os.path.getsize(file_path)!=0 and date>start_date: # avoid processing files that are empty or are the transmitted chirp
                 fnames.append(file_name)
                 fpaths.append(file_path)
-
+    
     blank = np.ndarray(len(fnames)).fill(np.nan) # 
     correlation_data = pd.DataFrame({'names':fnames, # create a dataframe to remain organized while processing
                                     'paths':fpaths,
@@ -130,11 +130,51 @@ def calculate_virtual_layer_heights(raw_data_directory,start_date,end_date):
 
     correlation_data['heights'] = (correlation_data['delays'])*(299792.458/2) # convert delay to virtual layer height
 
-    data_output = pd.DataFrame({'timestamp':          correlation_data['utc_times'],
-                                'frequencies_MHz':    correlation_data['frequencies'],
+    data_output = pd.DataFrame({'utc_times':          correlation_data['utc_times'],
+                                'frequencies_Hz':    correlation_data['frequencies'],
                                 'virtual_heights_km': correlation_data['heights'],
                                 'echo_detected':      correlation_data['echo_detected']})
     return data_output
 
+def update_layer_height_csv(csv_directory,raw_data_directory):
+    if len(os.listdir(csv_directory))!=0:
+        old_data = pd.read_csv(csv_directory+os.listdir(csv_directory)[-1])
+        old_data['utc_times'] = pd.to_datetime(old_data['utc_times'],format='ISO8601',utc=True)
+        start_date = (old_data['utc_times'].iloc[-1]).to_pydatetime()
+    else:
+        start_date = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=int(3)))#.strftime('%Y-%m-%dT%H:%M:%S')
+    end_date = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=int(1)))#.strftime('%Y-%m-%dT%H:%M:%S')
+
+
+    data = calculate_virtual_layer_heights(raw_data_directory,start_date,end_date)
+    save_height_data(data,csv_directory)
+
+
+def save_height_data(data,data_directory):
+    start_date = data['utc_times'].iloc[0].date()
+    end_date   = data['utc_times'].iloc[-1].date()
+
+    day = start_date
+    while day<=end_date:
+        new_data = data[data['utc_times'].dt.date==day]
+        file_path = data_directory+str(day)+'.csv'
+        if os.path.isfile(file_path):
+            old_data = pd.read_csv(file_path)
+            old_data['utc_times'] = pd.to_datetime(old_data['utc_times'],format='ISO8601')
+
+            new_data = pd.concat([old_data,new_data])
+        new_data = new_data.sort_values(by=['utc_times'],ascending=True)
+        new_data = new_data.reset_index(drop=True)
+        new_data = new_data.drop_duplicates()
+
+        new_data.to_csv(file_path,index=False)
+        day=day+dt.timedelta(days=1)
+
 if __name__ == '__main__':
-    print(calculate_virtual_layer_heights('chirps_and_echoes/','2026-02-06','2026-02-09'))
+    start_date = dt.datetime(2026,2,6)
+    end_date = dt.datetime(2026,2,9)
+    # print(calculate_virtual_layer_heights('chirps_and_echoes/',start_date,end_date))
+    # print(os.path.getsize('chirps_and_echoes/2026/02/09/2026_02_09_00_00_54_7025002'))
+    csv_directory = 'Scranton_data/'
+    raw_data_directory = 'chirps_and_echoes/'
+    update_layer_height_csv(csv_directory,raw_data_directory)
